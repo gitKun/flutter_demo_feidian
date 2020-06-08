@@ -1,12 +1,13 @@
+import 'package:extended_image/extended_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-class CTMaterialPageRoute<T> extends PageRoute<T> {
+class MyOpacityPageRouter<T> extends TransparentMaterialPageRoute<T> {
   /// Construct a MaterialPageRoute whose contents are defined by [builder].
   ///
   /// The values of [builder], [maintainState], and [fullScreenDialog] must not
   /// be null.
-  CTMaterialPageRoute({
+  MyOpacityPageRouter({
     @required this.builder,
     this.transion,
     RouteSettings settings,
@@ -16,7 +17,10 @@ class CTMaterialPageRoute<T> extends PageRoute<T> {
         assert(maintainState != null),
         assert(fullscreenDialog != null),
         //assert(opaque),
-        super(settings: settings, fullscreenDialog: fullscreenDialog);
+        super(
+            settings: settings,
+            fullscreenDialog: fullscreenDialog,
+            builder: builder);
 
   /// Builds the primary contents of the route.
   final WidgetBuilder builder;
@@ -29,7 +33,7 @@ class CTMaterialPageRoute<T> extends PageRoute<T> {
   bool get opaque => false;
 
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 1000);
+  Duration get transitionDuration => const Duration(milliseconds: 300);
 
   @override
   Color get barrierColor => null;
@@ -40,17 +44,18 @@ class CTMaterialPageRoute<T> extends PageRoute<T> {
   @override
   bool canTransitionTo(TransitionRoute<dynamic> nextRoute) {
     // Don't perform outgoing animation if the next route is a fullscreen dialog.
-    return (nextRoute is MaterialPageRoute && !nextRoute.fullscreenDialog) ||
-        (nextRoute is CupertinoPageRoute && !nextRoute.fullscreenDialog) ||
-        (nextRoute is CTMaterialPageRoute && !nextRoute.fullscreenDialog);
+    if (nextRoute is MyOpacityPageRouter && !nextRoute.fullscreenDialog) {
+      return true;
+    }
+    return super.canTransitionTo(nextRoute);
   }
 
   @override
   bool canTransitionFrom(TransitionRoute previousRoute) {
-    return previousRoute is MaterialPageRoute ||
-        previousRoute is CupertinoPageRoute ||
-        previousRoute is CTMaterialPageRoute;
-    // || previousRoute is TransparentCupertinoPageRoute;
+    if (previousRoute is MyOpacityPageRouter) {
+      return true;
+    }
+    return super.canTransitionFrom(previousRoute);
   }
 
   @override
@@ -78,18 +83,6 @@ class CTMaterialPageRoute<T> extends PageRoute<T> {
   @override
   Widget buildTransitions(BuildContext context, Animation<double> animation,
       Animation<double> secondaryAnimation, Widget child) {
-    // return Align(
-    //   child: FadeTransition(
-    //     opacity: animation,
-    //     child: child,
-    //   ),
-    // );
-    // Align(
-    //   child: SizeTransition(
-    //     sizeFactor: animation,
-    //     child: child,
-    //   ),
-    // );
     if (transion != null) {
       return transion(child, animation);
     } else {

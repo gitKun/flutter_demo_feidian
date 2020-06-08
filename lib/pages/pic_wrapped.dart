@@ -34,7 +34,7 @@ class _PicWrappedState extends State<PicWrapped> with TickerProviderStateMixin {
     _currentIndex = widget.index;
     _doubleClickAnimationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 1000),
     );
   }
 
@@ -52,139 +52,83 @@ class _PicWrappedState extends State<PicWrapped> with TickerProviderStateMixin {
     Widget result = Material(
       color: Colors.transparent,
       shadowColor: Colors.transparent,
-      child: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          ExtendedImageGesturePageView.builder(
-            controller: PageController(
-              initialPage: widget.index,
-            ),
-            itemBuilder: (BuildContext context, int index) {
-              final String item = widget.pics[index].picUrl;
-              final String heroID = widget.pics[index].heroID;
-              Widget image = ExtendedImage.asset(
-                item,
-                fit: BoxFit.contain,
-                enableSlideOutPage: true,
-                mode: ExtendedImageMode.gesture,
-                // hero 动画？
-                heroBuilderForSlidingPage: (Widget result) {
-                  if (index < min(9, widget.pics.length)) {
-                    return Hero(
-                      tag: heroID,
-                      child: result,
-                      flightShuttleBuilder: (BuildContext flightContext,
-                          Animation<double> animation,
-                          HeroFlightDirection flightDirection,
-                          BuildContext fromHeroContext,
-                          BuildContext toHeroContext) {
-                        final Hero hero =
-                            (flightDirection == HeroFlightDirection.pop
-                                ? fromHeroContext.widget
-                                : toHeroContext.widget) as Hero;
-                        return hero;
-                      },
-                    );
-                  } else {
-                    return result;
-                  }
-                },
-                initGestureConfigHandler: (ExtendedImageState state) {
-                  double initialScale = 1.0;
-                  // if (state.extendedImageInfo != null &&
-                  //     state.extendedImageInfo.image != null) {
-                  //   initialScale = initScale(
-                  //     size: size,
-                  //     initialScale: initialScale,
-                  //     imageSize: Size(
-                  //       state.extendedImageInfo.image.width.toDouble(),
-                  //       state.extendedImageInfo.image.height.toDouble(),
-                  //     ),
-                  //   );
-                  //   print('iniitialScale = $initialScale');
-                  // }
-                  return GestureConfig(
-                    inPageView: true,
-                    initialScale: initialScale,
-                    maxScale: max(initialScale, 3),
-                    animationMaxScale: max(initialScale, 3),
-                    initialAlignment: InitialAlignment.center,
-                    cacheGesture: false,
-                  );
-                },
-                // 双击放大或缩小
-                onDoubleTap: (ExtendedImageGestureState state) {
-                  final Offset pointerDownPosition = state.pointerDownPosition;
-                  final double begin = state.gestureDetails.totalScale;
-                  double end;
-                  // 判断
-                  if (_doubleClickAnimationController.isAnimating) {
-                    return null;
-                  }
-                  // 移旧
-                  _doubleClickAnimation
-                      ?.removeListener(_doubleClickAnimationListener);
-                  // 停前
-                  _doubleClickAnimationController.stop();
-                  // 从头
-                  _doubleClickAnimationController.reset();
-                  if (begin == doubleTapScales[0]) {
-                    end = doubleTapScales[1];
-                  } else {
-                    end = doubleTapScales[0];
-                  }
-                  _doubleClickAnimationListener = () {
-                    state.handleDoubleTap(
-                      scale: _doubleClickAnimation.value,
-                      doubleTapPosition: pointerDownPosition,
-                    );
-                  };
-                  _doubleClickAnimation =
-                      _doubleClickAnimationController.drive(Tween<double>(
-                    begin: begin,
-                    end: end,
-                  ));
-                  _doubleClickAnimation
-                      .addListener(_doubleClickAnimationListener);
-                  _doubleClickAnimationController.forward();
+      child: ExtendedImageGesturePageView(
+        controller: PageController(
+          initialPage: widget.index,
+        ),
+        children: widget.pics.map((picInfo) {
+          final String item = picInfo.picUrl;
+          final String heroID = picInfo.heroID;
+          Widget image = ExtendedImage.network(
+            item,
+            enableLoadState: true,
+            scale: 1.0,
+            fit: BoxFit.contain,
+            enableSlideOutPage: true,
+            mode: ExtendedImageMode.gesture,
+            heroBuilderForSlidingPage: (result) {
+              return Hero(
+                tag: heroID,
+                child: result,
+                flightShuttleBuilder: (BuildContext flightContext,
+                    Animation<double> animation,
+                    HeroFlightDirection flightDirection,
+                    BuildContext fromHeroContext,
+                    BuildContext toHeroContext) {
+                  final Hero hero = (flightDirection == HeroFlightDirection.pop
+                      ? fromHeroContext.widget
+                      : toHeroContext.widget) as Hero;
+                  return hero.child;
                 },
               );
-              // 给 image 添加手势
-              image = GestureDetector(
-                child: image,
-                onTap: () {
-                  slidePagekey.currentState.popPage();
-                  Navigator.pop(context);
-                },
-                onLongPress: () {
-                  print('长按应该弹出保存菜单！');
-                },
-              );
-              return image;
             },
-            itemCount: widget.pics.length,
-            // image index 改变
-            onPageChanged: (int index) {
-              _currentIndex = index;
+            loadStateChanged: (ExtendedImageState state) {
+              if (state.extendedImageLoadState == LoadState.completed) {
+                print('init gesture image! ____#');
+                return ExtendedImageGesture(
+                  state,
+                  canScaleImage: (_) => true,
+                  // imageBuilder: (Widget image) {
+                  //   return image;
+                  // },
+                );
+              }
+              print('loadStateChanged return NULL!');
+              return null;
             },
-            // 滚动方向
-            scrollDirection: Axis.horizontal,
-            // 设置回弹
-            physics: const BouncingScrollPhysics(),
-          ),
-        ],
+          );
+          // 给 image 添加手势
+          image = GestureDetector(
+            child: image,
+            onTap: () {
+              if (_doubleClickAnimation != null &&
+                  (_doubleClickAnimation.value > doubleTapScales[0] &&
+                      _doubleClickAnimation.value < doubleTapScales[1])) {
+                return;
+              } else {
+                slidePagekey.currentState?.popPage();
+                Navigator.pop(context);
+              }
+            },
+            onLongPress: () {
+              print('长按应该弹出保存菜单！');
+            },
+          );
+
+          return image;
+        }).toList(),
       ),
     );
 
     result = ExtendedImageSlidePage(
       key: slidePagekey,
       child: result,
-      // slidePageBackgroundHandler: (Offset offset, Size size) {
-      //   double opacity = 0.0;
-      //   opacity =
-      //       offset.distance / (Offset(size.width, size.height).distance / 2.0);
-      //   return Colors.black.withOpacity(1 - opacity);
-      // },
+      slidePageBackgroundHandler: (Offset offset, Size size) {
+        double opacity = 0.0;
+        opacity =
+            offset.distance / (Offset(size.width, size.height).distance / 2.0);
+        return Colors.black.withOpacity(1 - opacity);
+      },
       // 允许 上下左右拖动
       slideAxis: SlideAxis.both,
       // 仅拖动 image

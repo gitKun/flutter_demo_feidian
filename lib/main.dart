@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:ffi';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:pagetext/model/recommend_local.dart';
 
 import 'cell/recommend_cell.dart';
+import 'custom_paint_dr.dart';
+import 'routers/my_opcity_page_router.dart';
 
 void main() {
   runApp(MyApp());
@@ -19,7 +22,10 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.teal,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: MyHomePage(title: '沸点'),
+      //home: MyHomePage(title: '沸点'),
+      home: MyHomePage(
+        title: '沸点',
+      ),
     );
   }
 }
@@ -90,6 +96,38 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
       body: _body(),
+      // body: Center(
+      //   child: Hero(
+      //     tag: 'HeroID',
+      //     child: CircleAvatar(
+      //       child: IconButton(
+      //           icon: Icon(Icons.account_box),
+      //           onPressed: () {
+      //             _pushToTest(context);
+      //           }),
+      //     ),
+      //   ),
+      // ),
+    );
+  }
+
+  void _pushToTest(BuildContext context) {
+    Navigator.push(
+      context,
+      MyOpacityPageRouter(
+        transion: (child, animation) {
+          return Align(
+            alignment: Alignment.center,
+            child: FadeTransition(
+              opacity: animation,
+              child: child,
+            ),
+          );
+        },
+        builder: (context) {
+          return TestAssiceImagePage();
+        },
+      ),
     );
   }
 

@@ -1,11 +1,14 @@
 import 'dart:math';
+import 'dart:ui' as ui show Image;
 import 'package:extended_image/extended_image.dart';
 import 'package:fbutton/fbutton.dart';
 import 'package:flutter/material.dart';
 import 'package:pagetext/model/pic_info_item.dart';
 import 'package:pagetext/model/recommend_local.dart';
+import 'package:pagetext/pages/hero_detail_page.dart';
 import 'package:pagetext/pages/pic_wrapped.dart';
 import 'package:pagetext/routers/ct_material_page_route.dart';
+import 'package:pagetext/routers/my_opcity_page_router.dart';
 
 class RecommendCell extends StatefulWidget {
   final UserActivity model;
@@ -176,18 +179,77 @@ class _RecommendCellState extends State<RecommendCell> {
       }
       return Padding(
         padding: const EdgeInsets.only(top: 8),
-        child: GestureDetector(
-          onTap: () {
-            _imageAction(index: 0, contex: context);
+        child: ExtendedImage.network(
+          name,
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+          loadStateChanged: (ExtendedImageState state) {
+            Widget widget;
+            switch (state.extendedImageLoadState) {
+              case LoadState.loading:
+                widget = Container(
+                  color: Colors.grey,
+                  alignment: Alignment.center,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.0,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                        Theme.of(context).primaryColor),
+                  ),
+                );
+                break;
+              case LoadState.completed:
+                //if you can't konw image size before build,
+                //you have to handle crop when image is loaded.
+                //so maybe your loading widget size will not the same
+                //as image actual size, set returnLoadStateChangedWidget=true,so that
+                //image will not to be limited by size which you set for ExtendedImage first time.
+                state.returnLoadStateChangedWidget = false;
+
+                ///if you don't want override completed widget
+                ///please return null or state.completedWidget
+                //return null;
+                //return state.completedWidget;
+                widget = Hero(
+                    tag: name,
+                    child: buildImage(
+                        state.extendedImageInfo.image, width, height));
+
+                break;
+              case LoadState.failed:
+                widget = GestureDetector(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: <Widget>[
+                      Image.asset(
+                        'assets/failed.jpg',
+                        fit: BoxFit.fill,
+                      ),
+                      const Positioned(
+                        bottom: 0.0,
+                        left: 0.0,
+                        right: 0.0,
+                        child: Text(
+                          'load image failed, click to reload',
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    ],
+                  ),
+                  onTap: () {
+                    state.reLoadImage();
+                  },
+                );
+                break;
+            }
+            widget = GestureDetector(
+              child: widget,
+              onTap: () {
+                _imageAction(index: 0);
+              },
+            );
+            return widget;
           },
-          child: Hero(
-            tag: name,
-            child: Image.asset(
-              'images/act_$name',
-              width: width,
-              height: height,
-            ),
-          ),
         ),
       );
     } else {
@@ -204,23 +266,87 @@ class _RecommendCellState extends State<RecommendCell> {
           ),
           itemCount: picCount,
           itemBuilder: (context, index) {
-            String name = model.pictures[index].loaclName;
-            return GestureDetector(
-              onTap: () {
-                _imageAction(index: index);
+            Pictures pic = model.pictures[index];
+            return ExtendedImage.network(
+              pic.loaclName,
+              width: pic.width * 1.0,
+              height: pic.heihgt * 1.0,
+              fit: BoxFit.cover,
+              loadStateChanged: (ExtendedImageState state) {
+                Widget widget;
+                switch (state.extendedImageLoadState) {
+                  case LoadState.loading:
+                    widget = Container(
+                      color: Colors.grey,
+                      alignment: Alignment.center,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.0,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            Theme.of(context).primaryColor),
+                      ),
+                    );
+                    break;
+                  case LoadState.completed:
+                    //if you can't konw image size before build,
+                    //you have to handle crop when image is loaded.
+                    //so maybe your loading widget size will not the same
+                    //as image actual size, set returnLoadStateChangedWidget=true,so that
+                    //image will not to be limited by size which you set for ExtendedImage first time.
+                    state.returnLoadStateChangedWidget = false;
+
+                    ///if you don't want override completed widget
+                    ///please return null or state.completedWidget
+                    //return null;
+                    //return state.completedWidget;
+                    widget = Hero(
+                        tag: pic.loaclName,
+                        child: buildImage(
+                            state.extendedImageInfo.image, 460, 460));
+
+                    break;
+                  case LoadState.failed:
+                    widget = GestureDetector(
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: <Widget>[
+                          Image.asset(
+                            'assets/failed.jpg',
+                            fit: BoxFit.fill,
+                          ),
+                          const Positioned(
+                            bottom: 0.0,
+                            left: 0.0,
+                            right: 0.0,
+                            child: Text(
+                              'load image failed, click to reload',
+                              textAlign: TextAlign.center,
+                            ),
+                          )
+                        ],
+                      ),
+                      onTap: () {
+                        state.reLoadImage();
+                      },
+                    );
+                    break;
+                }
+                widget = GestureDetector(
+                  child: widget,
+                  onTap: () {
+                    _imageAction(index: index);
+                  },
+                );
+                return widget;
               },
-              child: Hero(
-                tag: name,
-                child: Image.asset(
-                  'images/act_$name',
-                  fit: BoxFit.cover,
-                ),
-              ),
             );
           },
         ),
       );
     }
+  }
+
+  Widget buildImage(ui.Image image, double num300, double num400) {
+    return ExtendedRawImage(image: image, fit: BoxFit.cover);
   }
 
   Widget _topicContainer() {
@@ -345,35 +471,35 @@ class _RecommendCellState extends State<RecommendCell> {
   }
 
   void _imageAction({int index = 0, BuildContext contex}) {
-    print('image selected at $index');
     List<PicInfoItem> items = model.pictures.map((Pictures e) {
       return PicInfoItem(
-        picUrl: 'images/act_${e.loaclName}',
+        picUrl: e.loaclName,
         heroID: e.loaclName,
       );
     }).toList();
 
-    // final TargetPlatform platform = Theme.of(context).platform;
     // Navigator.push(
     //   context,
-    //   platform == TargetPlatform.iOS
-    //       ? TransparentCupertinoPageRoute<void>(builder: (context) {
-    //           return PicWrapped(
-    //             index: index,
-    //             pics: items,
-    //           );
-    //         })
-    //       : TransparentMaterialPageRoute<void>(builder: (context) {
-    //           return PicWrapped(
-    //             index: index,
-    //             pics: items,
-    //           );
-    //         }),
+    //   CTMaterialPageRoute(
+    //     transion: (child, animation) {
+    //       return FadeTransition(
+    //         opacity: animation,
+    //         child: child,
+    //       );
+    //     },
+    //     builder: (context) {
+    //       return HeroDetailPage(
+    //         infoItems: items,
+    //         index: index,
+    //       );
+    //     },
+    //     //fullscreenDialog: true,
+    //   ),
     // );
 
     Navigator.push(
       context,
-      CTMaterialPageRoute(
+      MyOpacityPageRouter(
         transion: (child, animation) {
           return Align(
             alignment: Alignment.center,
@@ -389,7 +515,6 @@ class _RecommendCellState extends State<RecommendCell> {
             pics: items,
           );
         },
-        fullscreenDialog: true,
       ),
     );
   }
